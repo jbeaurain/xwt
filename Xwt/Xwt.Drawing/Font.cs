@@ -30,6 +30,9 @@ using System.Windows.Markup;
 using System.ComponentModel;
 using System.Text;
 using System.Globalization;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 
 
 namespace Xwt.Drawing
@@ -39,7 +42,6 @@ namespace Xwt.Drawing
 	public sealed class Font: XwtObject
 	{
 		FontBackendHandler handler;
-		FontSizeUnit unit;
 
 		internal Font (object backend): this (backend, null)
 		{
@@ -56,7 +58,7 @@ namespace Xwt.Drawing
 		}
 
 		/// <summary>
-		/// Creates a new font description from a string representation in the form "[FAMILY] [SIZE]"
+		/// Creates a new font description from a string representation in the form "[FAMILY-LIST] [STYLE-OPTIONS] [SIZE]"
 		/// </summary>
 		/// <returns>
 		/// The new font
@@ -64,52 +66,147 @@ namespace Xwt.Drawing
 		/// <param name='name'>
 		/// Font description
 		/// </param>
+		/// <remarks>
+		/// Creates a new font description from a string representation in the form "[FAMILY-LIST] [STYLE-OPTIONS] [SIZE]", 
+		/// where FAMILY-LIST is a comma separated list of families optionally terminated by a comma, STYLE_OPTIONS is a
+		/// whitespace separated list of words where each WORD describes one of style, weight or stretch, and SIZE is a
+		/// decimal number (size in points). Any one of the options may be absent. If FAMILY-LIST is absent, the default
+		/// font family will be used. If STYLE-OPTIONS is missing, then all style options will be set to the default values.
+		/// If SIZE is missing, the size in the resulting font description will be set to the default font size.
+		/// If the font doesn't exist, it returns the system font.
+		/// </remarks>
 		public static Font FromName (string name)
 		{
 			var toolkit = Toolkit.CurrentEngine;
 			var handler = toolkit.FontBackendHandler;
-			string[] parts = name.Split (new char[] {' '}, StringSplitOptions.RemoveEmptyEntries);
-			if (parts.Length < 2)
-				throw new ArgumentException ("Font family name or size not specified");
 
-			double size = 0;
-			FontSizeUnit unit = FontSizeUnit.Points;
-
-			var s = parts[parts.Length - 1];
-			if (s.EndsWith ("px")) {
-				s = s.Substring (0, s.Length - 2);
-				unit = FontSizeUnit.Pixels;
-			}
-			if (!double.TryParse (s, out size))
-				throw new ArgumentException ("Invalid font size: " + s);
-
+			double size = -1;
 			FontStyle style = FontStyle.Normal;
 			FontWeight weight = FontWeight.Normal;
 			FontStretch stretch = FontStretch.Normal;
 
-			int i = parts.Length - 2;
-			while (i > 0) {
+			int i = name.LastIndexOf (' ');
+			int lasti = name.Length;
+			do {
+				string token = name.Substring (i + 1, lasti - i - 1);
 				FontStyle st;
 				FontWeight fw;
 				FontStretch fs;
-				if (Enum.TryParse<FontStyle> (parts [i], out st) && st != FontStyle.Normal)
+				double siz;
+				if (double.TryParse (token, out siz)) // Try parsing the number first, since Enum.TryParse can also parse numbers
+					size = siz;
+				else if (Enum.TryParse<FontStyle> (token, true, out st) && st != FontStyle.Normal)
 					style = st;
-				else if (Enum.TryParse<FontWeight> (parts [i], out fw) && fw != FontWeight.Normal)
+				else if (Enum.TryParse<FontWeight> (token, true, out fw) && fw != FontWeight.Normal)
 					weight = fw;
-				else if (Enum.TryParse<FontStretch> (parts [i], out fs) && fs != FontStretch.Normal)
+				else if (Enum.TryParse<FontStretch> (token, true, out fs) && fs != FontStretch.Normal)
 					stretch = fs;
-				else
+				else if (token.Length > 0)
 					break;
-				i--;
+
+				lasti = i;
+				if (i <= 0)
+					break;
+
+				i = name.LastIndexOf (' ', i - 1);
+			} while (true);
+
+			string fname = lasti > 0 ? name.Substring (0, lasti) : string.Empty;
+			fname = fname.Length > 0 ? GetSupportedFont (fname) : Font.SystemFont.Family;
+
+			if (size == -1)
+				size = SystemFont.Size;
+
+			var fb = handler.Create (fname, size, style, weight, stretch);
+			if (fb != null)
+				return new Font (fb, toolkit);
+			else
+				return Font.SystemFont;
+		}
+
+		static string GetSupportedFont (string fontNames)
+		{
+			LoadInstalledFonts ();
+
+			int i = fontNames.IndexOf (',');
+			if (i == -1) {
+				var f = fontNames.Trim ();
+				string nf;
+				if (installedFonts.TryGetValue (f, out nf))
+					return nf;
+				else
+					return GetDefaultFont (f);
 			}
 
-			string fname = string.Join (" ", parts, 0, i + 1);
+			string[] names = fontNames.Split (new char[] {','}, StringSplitOptions.RemoveEmptyEntries);
+			if (names.Length == 0)
+				throw new ArgumentException ("Font family name not provided");
 
-			return new Font (handler.Create (fname, size, unit, style, weight, stretch), toolkit);
+			foreach (var name in names) {
+				var n = name.Trim ();
+				if (installedFonts.ContainsKey (n))
+					return n;
+			}
+			return GetDefaultFont (fontNames.Trim (' ',','));
 		}
-		
+
+		static string GetDefaultFont (string unknownFont)
+		{
+			Console.WriteLine ("Font '" + unknownFont + "' not available in the system. Using '" + Font.SystemFont.Family + "' instead");
+			return Font.SystemFont.Family;
+		}
+
+		static Dictionary<string,string> installedFonts;
+		static ReadOnlyCollection<string> installedFontsArray;
+
+
+		static void LoadInstalledFonts ()
+		{
+			if (installedFonts == null) {
+				installedFonts = new Dictionary<string,string> (StringComparer.OrdinalIgnoreCase);
+				foreach (var f in Toolkit.CurrentEngine.FontBackendHandler.GetInstalledFonts ())
+					installedFonts [f] = f;
+				installedFontsArray = new ReadOnlyCollection<string> (installedFonts.Values.ToArray ());
+			}
+		}
+
+		public static ReadOnlyCollection<string> AvailableFontFamilies {
+			get {
+				LoadInstalledFonts ();
+				return installedFontsArray;
+			}
+		}
+
+		public static Font SystemFont {
+			get { return Toolkit.CurrentEngine.FontBackendHandler.SystemFont; }
+		}
+
+		public static Font SystemMonospaceFont {
+			get {
+				return Toolkit.CurrentEngine.FontBackendHandler.SystemMonospaceFont;
+			}
+		}
+
+		public static Font SystemSerifFont {
+			get {
+				return Toolkit.CurrentEngine.FontBackendHandler.SystemSerifFont;
+			}
+		}
+
+		public static Font SystemSansSerifFont {
+			get {
+				return Toolkit.CurrentEngine.FontBackendHandler.SystemSansSerifFont;
+			}
+		}
+
+		/// <summary>
+		/// Returns a copy of the font using the provided font family
+		/// </summary>
+		/// <returns>The new font</returns>
+		/// <param name="fontFamily">A comma separated list of families</param>
 		public Font WithFamily (string fontFamily)
 		{
+			fontFamily = GetSupportedFont (fontFamily);
 			return new Font (ToolkitEngine.FontBackendHandler.SetFamily (Backend, fontFamily), ToolkitEngine);
 		}
 		
@@ -128,24 +225,14 @@ namespace Xwt.Drawing
 			}
 		}
 
-		public FontSizeUnit SizeUnit {
-			get { return unit; }
-		}
-
-
-		public Font WithPointSize (double size)
+		public Font WithSize (double size)
 		{
-			return new Font (handler.SetSize (Backend, size, FontSizeUnit.Points));
-		}
-		
-		public Font WithPixelSize (double size)
-		{
-			return new Font (handler.SetSize (Backend, size, FontSizeUnit.Pixels));
+			return new Font (handler.SetSize (Backend, size));
 		}
 		
 		public Font WithScaledSize (double scale)
 		{
-			return new Font (handler.SetSize (Backend, Size * scale, unit), ToolkitEngine);
+			return new Font (handler.SetSize (Backend, Size * scale), ToolkitEngine);
 		}
 		
 		public FontStyle Style {
@@ -191,18 +278,24 @@ namespace Xwt.Drawing
 			if (Stretch != FontStretch.Normal)
 				sb.Append (' ').Append (Stretch);
 			sb.Append (' ').Append (Size.ToString (CultureInfo.InvariantCulture));
-			if (unit == FontSizeUnit.Pixels)
-				sb.Append ("px");
 			return sb.ToString ();
+		}
+
+		public override bool Equals (object obj)
+		{
+			var other = obj as Font;
+			if (other == null)
+				return false;
+
+			return Family == other.Family && Style == other.Style && Weight == other.Weight && Stretch == other.Stretch && Size == other.Size;
+		}
+
+		public override int GetHashCode ()
+		{
+			return ToString().GetHashCode ();
 		}
 	}
 
-	public enum FontSizeUnit
-	{
-		Pixels,
-		Points
-	}
-	
 	public enum FontStyle
 	{
 		Normal,

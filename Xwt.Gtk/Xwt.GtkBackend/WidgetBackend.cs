@@ -369,7 +369,7 @@ namespace Xwt.GtkBackend
 			}
 			set {
 				customBackgroundColor = value;
-				AllocEventBox ();
+				AllocEventBox (visibleWindow: true);
 				EventsRootWidget.ModifyBg (Gtk.StateType.Normal, Util.ToGdkColor (value));
 			}
 		}
@@ -425,7 +425,7 @@ namespace Xwt.GtkBackend
 			}
 		}
 		
-		void AllocEventBox ()
+		void AllocEventBox (bool visibleWindow = false)
 		{
 			// Wraps the widget with an event box. Required for some
 			// widgets such as Label which doesn't have its own gdk window
@@ -434,7 +434,7 @@ namespace Xwt.GtkBackend
 				eventBox = new Gtk.EventBox ();
 				eventBox.Visible = Widget.Visible;
 				eventBox.Sensitive = Widget.Sensitive;
-				eventBox.VisibleWindow = false;
+				eventBox.VisibleWindow = visibleWindow;
 				if (alignment != null) {
 					alignment.Remove (alignment.Child);
 					alignment.Add (eventBox);
@@ -1002,12 +1002,20 @@ namespace Xwt.GtkBackend
 
 			if (DragDropInfo.DragDataRequests == 0) {
 				if (DragDropInfo.DragDataForMotion) {
-					// This is a workaround to what seems to be a mac gtk bug.
-					// Suggested action is set to all when no control key is pressed
+					// If no specific action is set, it means that no key has been pressed.
+					// In that case, use Move or Copy or Link as default (when allowed, in this order).
 					var cact = ConvertDragAction (context.Actions);
-					if (cact == DragDropAction.All)
-						cact = DragDropAction.Move;
-					
+					if (cact != DragDropAction.Copy && cact != DragDropAction.Move && cact != DragDropAction.Link) {
+						if (cact.HasFlag (DragDropAction.Move))
+							cact = DragDropAction.Move;
+						else if (cact.HasFlag (DragDropAction.Copy))
+							cact = DragDropAction.Copy;
+						else if (cact.HasFlag (DragDropAction.Link))
+							cact = DragDropAction.Link;
+						else
+							cact = DragDropAction.None;
+					}
+
 					DragOverEventArgs da = new DragOverEventArgs (DragDropInfo.LastDragPosition, DragDropInfo.DragData, cact);
 					ApplicationContext.InvokeUserCode (delegate {
 						EventSink.OnDragOver (da);
@@ -1050,8 +1058,11 @@ namespace Xwt.GtkBackend
 			
 			DragDropInfo.CurrentDragData = sdata.Data;
 			
-			if (sdata.ImageBackend != null)
-				Gtk.Drag.SetIconPixbuf (args.Context, (Gdk.Pixbuf) sdata.ImageBackend, (int)sdata.HotX, (int)sdata.HotY);
+			if (sdata.ImageBackend != null) {
+				var gi = (GtkImage)sdata.ImageBackend;
+				var img = gi.ToPixbuf (ApplicationContext, Widget);
+				Gtk.Drag.SetIconPixbuf (args.Context, img, (int)sdata.HotX, (int)sdata.HotY);
+			}
 			
 			HandleDragBegin (null, args);
 		}
@@ -1085,8 +1096,10 @@ namespace Xwt.GtkBackend
 			Gdk.DragAction action = ConvertDragAction (sdata.DragAction);
 			DragDropInfo.CurrentDragData = sdata.Data;
 			EventsRootWidget.DragBegin += HandleDragBegin;
-			if (sdata.ImageBackend != null)
-				IconInitializer.Init (EventsRootWidget, (Gdk.Pixbuf) sdata.ImageBackend, sdata.HotX, sdata.HotY);
+			if (sdata.ImageBackend != null) {
+				var img = ((GtkImage)sdata.ImageBackend).ToPixbuf (ApplicationContext, Widget);
+				IconInitializer.Init (EventsRootWidget, img, sdata.HotX, sdata.HotY);
+			}
 			Gtk.Drag.Begin (EventsRootWidget, Util.BuildTargetTable (sdata.Data.DataTypes), action, 1, Gtk.Global.CurrentEvent ?? new Gdk.Event (IntPtr.Zero));
 		}
 

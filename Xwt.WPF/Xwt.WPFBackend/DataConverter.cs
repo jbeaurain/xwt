@@ -87,12 +87,30 @@ namespace Xwt.WPFBackend
 			}
 		}
 
+		public static Alignment ToXwtAlignment (this SW.TextAlignment alignment)
+		{
+			switch (alignment) {
+				case SW.TextAlignment.Left: return Alignment.Start;
+				case SW.TextAlignment.Center: return Alignment.Center;
+				default: return Alignment.End;
+			}
+		}
+
 		public static SW.HorizontalAlignment ToWpfAlignment (this Alignment alignment)
 		{
 			switch (alignment) {
 				case Alignment.Start: return SW.HorizontalAlignment.Left;
 				case Alignment.Center: return SW.HorizontalAlignment.Center;
 				default: return SW.HorizontalAlignment.Right;
+			}
+		}
+
+		public static SW.TextAlignment ToTextAlignment (this Alignment alignment)
+		{
+			switch (alignment) {
+				case Alignment.Start: return SW.TextAlignment.Left;
+				case Alignment.Center: return SW.TextAlignment.Center;
+				default: return SW.TextAlignment.Right;
 			}
 		}
 
@@ -240,7 +258,12 @@ namespace Xwt.WPFBackend
 		public static SWM.ImageSource AsImageSource (object nativeImage)
 		{
 			var source = nativeImage as WpfImage;
-			return source.Image;
+			return source.Frames[0];
+		}
+
+		public static SWM.ImageSource ToImageSource (this Xwt.Backends.ImageDescription img)
+		{
+			return AsImageSource (img.Backend);
 		}
 
 		//
@@ -268,6 +291,7 @@ namespace Xwt.WPFBackend
 		{
 			if (type == TransferDataType.Text) return DataFormats.UnicodeText;
 			if (type == TransferDataType.Rtf) return DataFormats.Rtf;
+			if (type == TransferDataType.Html) return DataFormats.Html;
 			if (type == TransferDataType.Uri) return DataFormats.FileDrop;
 			if (type == TransferDataType.Image) return DataFormats.Bitmap;
 			return type.Id;
@@ -279,6 +303,7 @@ namespace Xwt.WPFBackend
 			if (type == DataFormats.Rtf) return TransferDataType.Rtf;
 			if (type == DataFormats.FileDrop) return TransferDataType.Uri;
 			if (type == DataFormats.Bitmap) return TransferDataType.Image;
+			if (type == DataFormats.Html) return TransferDataType.Html;
 			return TransferDataType.FromId (type);
 		}
 

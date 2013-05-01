@@ -116,6 +116,8 @@
     <Compile Include="Xwt.Mac\ListBoxBackend.cs" />
     <Compile Include="Xwt.Mac\DialogBackend.cs" />
     <Compile Include="Xwt.Mac\MacSystemInformation.cs" />
+    <Compile Include="Xwt.Mac\RichTextViewBackend.cs" />
+    <Compile Include="Xwt.Mac\RadioButtonBackend.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
@@ -129,14 +131,6 @@
     <Folder Include="Xwt.Mac.CellViews\" />
     <Folder Include="icons\" />
   </ItemGroup>
-  <ItemGroup>
-    <EmbeddedResource Include="icons\magnifier-zoom-in.png">
-      <LogicalName>magnifier-zoom-in.png</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="icons\magnifier-zoom-out.png">
-      <LogicalName>magnifier-zoom-out.png</LogicalName>
-    </EmbeddedResource>
-  </ItemGroup>
   <ProjectExtensions>
     <MonoDevelop>
       <Properties>
@@ -146,4 +140,18 @@
       </Properties>
     </MonoDevelop>
   </ProjectExtensions>
+  <ItemGroup>
+    <EmbeddedResource Include="icons\zoom-in.png">
+      <LogicalName>zoom-in.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icons\zoom-in%402x.png">
+      <LogicalName>zoom-in@2x.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icons\zoom-out.png">
+      <LogicalName>zoom-out.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icons\zoom-out%402x.png">
+      <LogicalName>zoom-out@2x.png</LogicalName>
+    </EmbeddedResource>
+  </ItemGroup>
 </Project>

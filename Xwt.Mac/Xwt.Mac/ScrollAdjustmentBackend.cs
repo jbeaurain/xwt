@@ -37,7 +37,8 @@ namespace Xwt.Mac
 		IScrollAdjustmentEventSink eventSink;
 		double lower;
 		double upper;
-		
+		double pageSize;
+
 		public ScrollAdjustmentBackend (NSScrollView scrollView, bool vertical)
 		{
 			this.vertical = vertical;
@@ -69,14 +70,22 @@ namespace Xwt.Mac
 			this.eventSink = eventSink;
 		}
 
+		CustomClipView ClipView {
+			get { return ((CustomClipView)scrollView.ContentView); }
+		}
+
 		public double Value {
 			get {
 				if (vertical)
-					return scrollView.DocumentVisibleRect.Top;
+					return ClipView.CurrentY;
 				else
-					return scrollView.DocumentVisibleRect.Left;
+					return ClipView.CurrentX;
 			}
 			set {
+				if (vertical)
+					ClipView.CurrentY = (float)value;
+				else
+					ClipView.CurrentX = (float)value;
 			}
 		}
 
@@ -86,6 +95,7 @@ namespace Xwt.Mac
 			}
 			set {
 				lower = value;
+				ClipView.UpdateDocumentSize ();
 			}
 		}
 
@@ -95,6 +105,7 @@ namespace Xwt.Mac
 			}
 			set {
 				upper = value;
+				ClipView.UpdateDocumentSize ();
 			}
 		}
 
@@ -123,12 +134,11 @@ namespace Xwt.Mac
 
 		public double PageSize {
 			get {
-				if (vertical)
-					return scrollView.DocumentVisibleRect.Height;
-				else
-					return scrollView.DocumentVisibleRect.Width;
+				return pageSize;
 			}
 			set {
+				pageSize = value;
+				ClipView.UpdateDocumentSize ();
 			}
 		}
 		#endregion

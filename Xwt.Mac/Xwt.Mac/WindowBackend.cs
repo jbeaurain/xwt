@@ -55,6 +55,10 @@ namespace Xwt.Mac
 			controller.Window = this;
 			StyleMask |= NSWindowStyle.Resizable | NSWindowStyle.Closable | NSWindowStyle.Miniaturizable;
 			ContentView.AutoresizesSubviews = true;
+
+			// TODO: do it only if mouse move events are enabled in a widget
+			AcceptsMouseMovedEvents = true;
+
 			Center ();
 		}
 
@@ -148,6 +152,12 @@ namespace Xwt.Mac
 						MonoMac.ObjCRuntime.Selector.GetHandle ("toggleFullScreen:"),
 						IntPtr.Zero);
 				}			
+			}
+		}
+
+		object IWindowFrameBackend.Screen {
+			get {
+				return Screen;
 			}
 		}
 
@@ -412,7 +422,7 @@ namespace Xwt.Mac
 			MinSize = r.Size;
 		}
 
-		public void SetIcon (object imageBackend)
+		public void SetIcon (ImageDescription icon)
 		{
 		}
 

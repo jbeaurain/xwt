@@ -65,8 +65,10 @@ namespace Xwt.GtkBackend
 				return;
 			if (val is string)
 				data.Text = (string)val;
-			else if (val is Xwt.Drawing.Image)
-				data.SetPixbuf ((Gdk.Pixbuf) Toolkit.GetBackend (val));
+			else if (val is Xwt.Drawing.Image) {
+				var bmp = ((Image)val).ToBitmap ();
+				data.SetPixbuf (((GtkImage)Toolkit.GetBackend (bmp)).Frames[0]);
+			}
 			else {
 				var at = Gdk.Atom.Intern (atomType, false);
 				data.Set (at, 0, TransferDataSource.SerializeValue (val));
@@ -142,13 +144,26 @@ namespace Xwt.GtkBackend
 						list.Remove ("STRING");
 					}
 					entries = (Gtk.TargetEntry[])list;
-				}
-				else if (type == TransferDataType.Rtf) {
+				} else if (type == TransferDataType.Rtf) {
 					Gdk.Atom atom;
-					if (Platform.IsMac)
+					if (Platform.IsMac) {
 						atom = Gdk.Atom.Intern ("NSRTFPboardType", false); //TODO: use public.rtf when dep on MacOS 10.6
-					else
+					} else if (Platform.IsWindows) {
+						atom = Gdk.Atom.Intern ("Rich Text Format", false);
+					} else {
 						atom = Gdk.Atom.Intern ("text/rtf", false);
+					}
+					entries = new Gtk.TargetEntry[] { new Gtk.TargetEntry (atom, 0, id) };
+				}
+				else if (type == TransferDataType.Html) {
+					Gdk.Atom atom;
+					if (Platform.IsMac) {
+						atom = Gdk.Atom.Intern ("Apple HTML pasteboard type", false); //TODO: use public.rtf when dep on MacOS 10.6
+					} else if (Platform.IsWindows) {
+						atom = Gdk.Atom.Intern ("HTML Format", false);
+					} else {
+						atom = Gdk.Atom.Intern ("text/html", false);
+					}
 					entries = new Gtk.TargetEntry[] { new Gtk.TargetEntry (atom, 0, id) };
 				}
 				else {
@@ -163,7 +178,7 @@ namespace Xwt.GtkBackend
 		
 		static Dictionary<string,string> icons;
 
-		public static string ToGtkStock (string id)
+		public static GtkImage ToGtkStock (string id)
 		{
 			if (icons == null) {
 				icons = new Dictionary<string, string> ();
@@ -178,10 +193,12 @@ namespace Xwt.GtkBackend
 				icons [StockIconId.Warning] = Gtk.Stock.DialogWarning;
 				icons [StockIconId.Error] = Gtk.Stock.DialogError;
 				icons [StockIconId.Information] = Gtk.Stock.DialogInfo;
+				icons [StockIconId.Question] = Gtk.Stock.DialogQuestion;
 			}
 			string res;
-			icons.TryGetValue (id, out res);
-			return res;
+			if (!icons.TryGetValue (id, out res))
+				throw new NotSupportedException ("Unknown image: " + id);
+			return new GtkImage (res);
 		}
 		
 		public static Gtk.IconSize ToGtkSize (Xwt.IconSize size)
@@ -280,15 +297,24 @@ namespace Xwt.GtkBackend
 			return iconSizes [(int)s].Width;
 		}
 		
-		public static Gdk.Pixbuf ToPixbuf (this Image image, Gtk.IconSize defaultIconSize)
+		public static ImageDescription WithDefaultSize (this ImageDescription image, Gtk.IconSize defaultIconSize)
 		{
-			if (!image.HasFixedSize) {
+			if (image.Size.IsZero) {
 				var s = iconSizes [(int)defaultIconSize];
-				image = image.WithSize (s.Width, s.Height);
+				image.Size = s;
 			}
-			return (Gdk.Pixbuf)Toolkit.GetBackend (image.ToBitmap ());
+			return image;
 		}
-		
+
+		public static double GetScaleFactor (Gtk.Widget w)
+		{
+			return 1;
+		}
+
+		public static double GetDefaultScaleFactor ()
+		{
+			return 1;
+		}
 	}
 }
 

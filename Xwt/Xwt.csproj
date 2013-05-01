@@ -382,11 +382,13 @@
     <Compile Include="Xwt.Backends\StockIconId.cs" />
     <Compile Include="Xwt.Drawing\DrawingImage.cs" />
     <Compile Include="Xwt.Drawing\BitmapImage.cs" />
-    <Compile Include="Xwt.Drawing\ImageSet.cs" />
     <Compile Include="Xwt.Formats\PlainTextFormat.cs" />
     <Compile Include="Xwt.Drawing\ImageFileType.cs" />
     <Compile Include="Xwt\Slider.cs" />
     <Compile Include="Xwt.Backends\ISliderBackend.cs" />
+    <Compile Include="Xwt.Drawing\VectorImage.cs" />
+    <Compile Include="Xwt\RadioButton.cs" />
+    <Compile Include="Xwt.Backends\IRadioButtonBackend.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup />

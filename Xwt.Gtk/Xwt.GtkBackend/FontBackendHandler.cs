@@ -28,15 +28,29 @@ using System;
 using Xwt.Backends;
 using Pango;
 using Xwt.Drawing;
+using System.Globalization;
+using System.Reflection;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace Xwt.GtkBackend
 {
 	public class GtkFontBackendHandler: FontBackendHandler
 	{
-		public override object Create (string fontName, double size, FontSizeUnit sizeUnit, FontStyle style, FontWeight weight, FontStretch stretch)
+		public override object GetSystemDefaultFont ()
 		{
-			string s = sizeUnit == FontSizeUnit.Points ? size.ToString () : size + "px";
-			return FontDescription.FromString (fontName + " " + s);
+			var la = new Gtk.Label ("");
+			return la.Style.FontDescription;
+		}
+
+		public override IEnumerable<string> GetInstalledFonts ()
+		{
+			return Gdk.PangoHelper.ContextGet ().FontMap.Families.Select (f => f.Name);
+		}
+
+		public override object Create (string fontName, double size, FontStyle style, FontWeight weight, FontStretch stretch)
+		{
+			return FontDescription.FromString (fontName + ", " + style + " " + weight + " " + stretch + " " + size.ToString (CultureInfo.InvariantCulture));
 		}
 
 		#region IFontBackendHandler implementation
@@ -47,14 +61,11 @@ namespace Xwt.GtkBackend
 			return d.Copy ();
 		}
 		
-		public override object SetSize (object handle, double size, FontSizeUnit sizeUnit)
+		public override object SetSize (object handle, double size)
 		{
 			FontDescription d = (FontDescription) handle;
 			d = d.Copy ();
-			if (sizeUnit == FontSizeUnit.Points)
-				d.Size = (int) (size * Pango.Scale.PangoScale);
-			else
-				d.AbsoluteSize = (int) (size * Pango.Scale.PangoScale);
+			d.Size = (int) (size * Pango.Scale.PangoScale);
 			return d;
 		}
 

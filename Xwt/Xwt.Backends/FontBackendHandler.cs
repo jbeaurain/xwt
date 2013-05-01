@@ -26,15 +26,105 @@
 
 using System;
 using Xwt.Drawing;
+using System.Collections.Generic;
 
 namespace Xwt.Backends
 {
 	public abstract class FontBackendHandler: BackendHandler
 	{
-		public abstract object Create (string fontName, double size, FontSizeUnit sizeUnit, FontStyle style, FontWeight weight, FontStretch stretch);
+		Font systemFont;
+		Font systemMonospaceFont;
+		Font systemSerifFont;
+		Font systemSansSerifFont;
+
+		internal Font SystemFont {
+			get {
+				if (systemFont == null)
+					systemFont = new Font (GetSystemDefaultFont (), ApplicationContext.Toolkit);
+				return systemFont;
+			}
+		}
+
+		internal Font SystemMonospaceFont {
+			get {
+				if (systemMonospaceFont == null) {
+					var f = GetSystemDefaultMonospaceFont ();
+					if (f != null)
+						systemMonospaceFont = new Font (f, ApplicationContext.Toolkit);
+					else
+						systemMonospaceFont = SystemFont.WithFamily ("Courier New, Courier, monospace");
+				}
+				return systemMonospaceFont;
+			}
+		}
+
+		internal Font SystemSerifFont {
+			get {
+				if (systemSerifFont == null) {
+					var f = GetSystemDefaultSerifFont ();
+					if (f != null)
+						systemSerifFont = new Font (f, ApplicationContext.Toolkit);
+					else
+						systemSerifFont = SystemFont.WithFamily ("Times New Roman, Times, serif");
+				}
+				return systemSerifFont;
+			}
+		}
+
+		internal Font SystemSansSerifFont {
+			get {
+				if (systemSansSerifFont == null) {
+					var f = GetSystemDefaultSansSerifFont ();
+					if (f != null)
+						systemSansSerifFont = new Font (f, ApplicationContext.Toolkit);
+					else
+						systemSansSerifFont = SystemFont.WithFamily ("Lucida Sans Unicode, Lucida Grande, Arial, Helvetica, sans-serif");
+				}
+				return systemSansSerifFont;
+			}
+		}
+
+		public abstract object GetSystemDefaultFont ();
+
+		/// <summary>
+		/// Gets the system default serif font, or null if there is no default for such font
+		/// </summary>
+		public virtual object GetSystemDefaultSerifFont ()
+		{
+			return null;
+		}
+
+		/// <summary>
+		/// Gets the system default sans-serif font, or null if there is no default for such font
+		/// </summary>
+		public virtual object GetSystemDefaultSansSerifFont ()
+		{
+			return null;
+		}
+
+		/// <summary>
+		/// Gets the system default monospace font, or null if there is no default for such font
+		/// </summary>
+		public virtual object GetSystemDefaultMonospaceFont ()
+		{
+			return null;
+		}
+
+		public abstract IEnumerable<string> GetInstalledFonts ();
+
+		/// <summary>
+		/// Creates a new font. Returns null if the font family is not available in the system
+		/// </summary>
+		/// <param name="fontName">Font family name</param>
+		/// <param name="size">Size in points</param>
+		/// <param name="style">Style</param>
+		/// <param name="weight">Weight</param>
+		/// <param name="stretch">Stretch</param>
+		public abstract object Create (string fontName, double size, FontStyle style, FontWeight weight, FontStretch stretch);
+
 		public abstract object Copy (object handle);
 		
-		public abstract object SetSize (object handle, double size, FontSizeUnit unit);
+		public abstract object SetSize (object handle, double size);
 		public abstract object SetFamily (object handle, string family);
 		public abstract object SetStyle (object handle, FontStyle style);
 		public abstract object SetWeight (object handle, FontWeight weight);

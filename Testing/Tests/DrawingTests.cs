@@ -57,7 +57,7 @@ namespace Xwt
 		{
 			if (builder == null)
 				return;
-			var img = builder.ToImage ();
+			var img = builder.ToBitmap ((int)builder.Width, (int)builder.Height);
 			builder.Dispose ();
 			builder = null;
 
@@ -417,6 +417,54 @@ namespace Xwt
 			context.Pattern = new Xwt.Drawing.ImagePattern (img);
 			context.Fill ();
 			CheckImage ("ImagePatternWithScaleTransform.png");
+		}
+		
+		[Test]
+		public void ImagePatternWithAlpha ()
+		{
+			InitBlank (70, 70);
+			context.Rectangle (5, 5, 40, 60);
+			var img = Image.FromResource (GetType(), "pattern-sample.png");
+			img = img.WithAlpha (0.5);
+			context.Pattern = new Xwt.Drawing.ImagePattern (img);
+			context.Fill ();
+			CheckImage ("ImagePatternWithAlpha.png");
+		}
+		
+		[Test]
+		public void ImagePatternWithTranslateTransformWithAlpha ()
+		{
+			InitBlank (70, 70);
+			context.Translate (5, 5);
+			context.Rectangle (0, 0, 40, 60);
+			var img = Image.FromResource (GetType(), "pattern-sample.png");
+			context.Pattern = new Xwt.Drawing.ImagePattern (img.WithAlpha (0.5));
+			context.Fill ();
+			CheckImage ("ImagePatternWithTranslateTransformWithAlpha.png");
+		}
+		
+		[Test]
+		public void ImagePatternWithRotateTransformWithAlpha ()
+		{
+			InitBlank (70, 70);
+			context.Rotate (4);
+			context.Rectangle (5, 5, 40, 60);
+			var img = Image.FromResource (GetType(), "pattern-sample.png");
+			context.Pattern = new Xwt.Drawing.ImagePattern (img.WithAlpha (0.5));
+			context.Fill ();
+			CheckImage ("ImagePatternWithRotateTransformWithAlpha.png");
+		}
+
+		[Test]
+		public void ImagePatternWithScaleTransformWithAlpha ()
+		{
+			InitBlank (70, 70);
+			context.Scale (2, 0.5);
+			context.Rectangle (5, 5, 20, 120);
+			var img = Image.FromResource (GetType(), "pattern-sample.png");
+			context.Pattern = new Xwt.Drawing.ImagePattern (img.WithAlpha (0.5));
+			context.Fill ();
+			CheckImage ("ImagePatternWithScaleTransformWithAlpha.png");
 		}
 
 		#endregion
@@ -781,6 +829,186 @@ namespace Xwt
 			context.Rectangle (10, 10, 30, 30);
 			context.Fill ();
 			CheckImage ("SaveRestoreTransform.png");
+		}
+
+		#endregion
+
+		#region Text
+		
+		[Test]
+		public void Text ()
+		{
+			// Transform is saved
+			InitBlank (100, 50);
+			var la = new TextLayout ();
+			la.Font = Font.FromName ("Arial 12");
+			la.Text = "Hello World";
+			context.DrawTextLayout (la, 5, 5);
+			CheckImage ("Text.png");
+		}
+		
+		[Test]
+		public void TextSize ()
+		{
+			// Transform is saved
+			InitBlank (100, 50);
+			var la = new TextLayout ();
+			la.Font = Font.FromName ("Arial 12");
+			la.Text = "Hello World";
+
+			var s = la.GetSize ();
+			context.Rectangle (10.5, 10.5, s.Width, s.Height);
+			context.SetColor (Colors.Blue);
+			context.Stroke ();
+
+			context.SetColor (Colors.Black);
+			context.DrawTextLayout (la, 10, 10);
+			CheckImage ("TextSize.png");
+		}
+		
+		[Test]
+		public void TextLineBreak ()
+		{
+			// Transform is saved
+			InitBlank (100, 50);
+			var la = new TextLayout ();
+			la.Font = Font.FromName ("Arial 12");
+			la.Text = "Hello\nWorld";
+
+			var s = la.GetSize ();
+			context.Rectangle (10.5, 10.5, s.Width, s.Height);
+			context.SetColor (Colors.Blue);
+			context.Stroke ();
+
+			context.SetColor (Colors.Black);
+			context.DrawTextLayout (la, 10, 10);
+			CheckImage ("TextLineBreak.png");
+		}
+		
+		[Test]
+		public void TextWithBlankLines ()
+		{
+			// Transform is saved
+			InitBlank (50, 150);
+			var la = new TextLayout ();
+			la.Font = Font.FromName ("Arial 12");
+			la.Text = "\n\nHello\n\n\nWorld\n\n";
+
+			var s = la.GetSize ();
+			context.Rectangle (10.5, 10.5, s.Width, s.Height);
+			context.SetColor (Colors.Blue);
+			context.Stroke ();
+
+			context.SetColor (Colors.Black);
+			context.DrawTextLayout (la, 10, 10);
+			CheckImage ("TextWithBlankLines.png");
+		}
+
+		[Test]
+		public void TextWordWrap ()
+		{
+			// Transform is saved
+			InitBlank (100, 100);
+			var la = new TextLayout ();
+			la.Font = Font.FromName ("Arial 12");
+			la.Text = "One Two Three Four Five Six Seven Eight Nine";
+			la.Width = 90;
+			la.Trimming = TextTrimming.Word;
+			var s = la.GetSize ();
+			context.Rectangle (5.5, 5.5, s.Width, s.Height);
+			context.SetColor (Colors.Blue);
+			context.Stroke ();
+
+			context.SetColor (Colors.Black);
+			context.DrawTextLayout (la, 5, 5);
+			CheckImage ("TextWordWrap.png");
+		}
+		
+		[Test]
+		public void TextTrimmingEllipsis ()
+		{
+			// Transform is saved
+			InitBlank (50, 100);
+			var la = new TextLayout ();
+			la.Font = Font.FromName ("Arial 12");
+			la.Text = "One Two Three Four Five Six Seven Eight Nine";
+			la.Width = 45;
+			la.Trimming = TextTrimming.WordElipsis;
+			var s = la.GetSize ();
+			context.Rectangle (5.5, 5.5, s.Width, s.Height);
+			context.SetColor (Colors.Blue);
+			context.Stroke ();
+
+			context.SetColor (Colors.Black);
+			context.DrawTextLayout (la, 5, 5);
+			CheckImage ("TextTrimmingEllipsis.png");
+		}
+
+		#endregion
+
+		#region Paths
+
+		[Test]
+		public void DrawPathTwoTimes ()
+		{
+			InitBlank (50, 50);
+			var p = new DrawingPath ();
+			p.Rectangle (15, 15, 20, 20);
+			p.Rectangle (20, 20, 10, 10);
+			context.AppendPath (p);
+			context.Stroke ();
+			context.Rotate (15);
+			context.AppendPath (p);
+			context.Stroke ();
+			CheckImage ("DrawPathTwoTimes.png");
+		}
+
+		#endregion
+
+		#region Hit test checking
+		
+		[Test]
+		public void DrawingPathPointInFill ()
+		{
+			DrawingPath p = new DrawingPath ();
+			p.Rectangle (10, 10, 20, 20);
+			Assert.IsTrue (p.IsPointInFill (15, 15));
+			Assert.IsFalse (p.IsPointInFill (9, 9));
+		}
+
+		[Test]
+		public void ContextPointInStroke ()
+		{
+			InitBlank (50, 50);
+			context.Rectangle (10, 10, 20, 20);
+			context.SetLineWidth (3);
+			Assert.IsTrue (context.IsPointInStroke (10, 10));
+			Assert.IsTrue (context.IsPointInStroke (11, 11));
+			Assert.IsFalse (context.IsPointInStroke (15, 15));
+			context.MoveTo (15, 15);
+			context.RelLineTo (5, 0);
+			Assert.IsTrue (context.IsPointInStroke (15, 15));
+		}
+		
+		[Test]
+		public void ContextPointInFillWithTransform ()
+		{
+			InitBlank (50, 50);
+			context.Translate (50, 50);
+			context.Rectangle (10, 10, 20, 20);
+			context.SetLineWidth (3);
+			Assert.IsTrue (context.IsPointInStroke (10, 10));
+			Assert.IsTrue (context.IsPointInStroke (11, 11));
+			Assert.IsFalse (context.IsPointInStroke (15, 15));
+			Assert.IsTrue (context.IsPointInFill (15, 15));
+			Assert.IsFalse (context.IsPointInFill (9, 9));
+
+			context.Translate (50, 50);
+			Assert.IsTrue (context.IsPointInStroke (-40, -40));
+			Assert.IsTrue (context.IsPointInStroke (-41, -41));
+			Assert.IsFalse (context.IsPointInStroke (-45, -45));
+			Assert.IsTrue (context.IsPointInFill (-35, -35));
+			Assert.IsFalse (context.IsPointInFill (15, 15));
 		}
 
 		#endregion

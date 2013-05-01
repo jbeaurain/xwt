@@ -34,9 +34,28 @@ namespace Xwt.Mac
 {
 	public class MacFontBackendHandler: FontBackendHandler
 	{
-		public override object Create (string fontName, double size, FontSizeUnit sizeUnit, FontStyle style, FontWeight weight, FontStretch stretch)
+		public override object GetSystemDefaultFont ()
 		{
-			object o  = NSFont.FromFontName (fontName, (float)size);
+			return NSFont.SystemFontOfSize (0);
+		}
+
+		public override object GetSystemDefaultMonospaceFont ()
+		{
+			var font = NSFont.SystemFontOfSize (0);
+			return Create ("Menlo", font.PointSize, FontStyle.Normal, FontWeight.Normal, FontStretch.Normal);
+		}
+
+		public override System.Collections.Generic.IEnumerable<string> GetInstalledFonts ()
+		{
+			return NSFontManager.SharedFontManager.AvailableFontFamilies;
+		}
+
+		public override object Create (string fontName, double size, FontStyle style, FontWeight weight, FontStretch stretch)
+		{
+			object o = NSFont.FromFontName (fontName, (float)size);
+			o = SetStyle (o, style);
+			o = SetWeight (o, weight);
+			o = SetStretch (o, stretch);
 			return o;
 		}
 
@@ -44,10 +63,10 @@ namespace Xwt.Mac
 		public override object Copy (object handle)
 		{
 			NSFont f = (NSFont) handle;
-			return (NSFont)f.Copy ();
+			return f.Copy ();
 		}
 		
-		public override object SetSize (object handle, double size, FontSizeUnit sizeUnit)
+		public override object SetSize (object handle, double size)
 		{
 			NSFont f = (NSFont) handle;
 			return NSFontManager.SharedFontManager.ConvertFont (f, (float)size);
@@ -84,21 +103,18 @@ namespace Xwt.Mac
 		public override object SetStretch (object handle, FontStretch stretch)
 		{
 			NSFont f = (NSFont) handle;
-			NSFontSymbolicTraits traits = f.FontDescriptor.SymbolicTraits;
 			if (stretch < FontStretch.Normal) {
-				traits |= NSFontSymbolicTraits.CondensedTrait;
-				traits &= ~NSFontSymbolicTraits.ExpandedTrait;
+				f = NSFontManager.SharedFontManager.ConvertFont (f, NSFontTraitMask.Condensed);
+				f = NSFontManager.SharedFontManager.ConvertFontToNotHaveTrait (f, NSFontTraitMask.Expanded);
 			}
 			else if (stretch > FontStretch.Normal) {
-				traits |= NSFontSymbolicTraits.ExpandedTrait;
-				traits &= ~NSFontSymbolicTraits.CondensedTrait;
+				f = NSFontManager.SharedFontManager.ConvertFont (f, NSFontTraitMask.Expanded);
+				f = NSFontManager.SharedFontManager.ConvertFontToNotHaveTrait (f, NSFontTraitMask.Condensed);
 			}
 			else {
-				traits &= ~NSFontSymbolicTraits.ExpandedTrait;
-				traits &= ~NSFontSymbolicTraits.CondensedTrait;
+				f = NSFontManager.SharedFontManager.ConvertFontToNotHaveTrait (f, NSFontTraitMask.Condensed | NSFontTraitMask.Expanded);
 			}
-			
-			return NSFont.FromDescription (f.FontDescriptor.FontDescriptorWithSymbolicTraits (traits), null);
+			return f;
 		}
 		
 		public override double GetSize (object handle)
@@ -134,9 +150,10 @@ namespace Xwt.Mac
 		public override FontStretch GetStretch (object handle)
 		{
 			NSFont f = (NSFont) handle;
-			if ((f.FontDescriptor.SymbolicTraits & NSFontSymbolicTraits.CondensedTrait) != 0)
+			var traits = NSFontManager.SharedFontManager.TraitsOfFont (f);
+			if ((traits & NSFontTraitMask.Condensed) != 0)
 				return FontStretch.Condensed;
-			else if ((f.FontDescriptor.SymbolicTraits & NSFontSymbolicTraits.ExpandedTrait) != 0)
+			else if ((traits & NSFontTraitMask.Expanded) != 0)
 				return FontStretch.Expanded;
 			else
 				return FontStretch.Normal;

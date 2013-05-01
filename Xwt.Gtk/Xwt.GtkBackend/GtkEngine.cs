@@ -24,8 +24,6 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#define USE_PANGO
-
 using System;
 
 using Xwt.Backends;
@@ -33,7 +31,7 @@ using Xwt.CairoBackend;
 
 namespace Xwt.GtkBackend
 {
-	public class GtkEngine: Xwt.Backends.ToolkitEngineBackend
+	public class GtkEngine: ToolkitEngineBackend
 	{
 		public override void InitializeApplication ()
 		{
@@ -54,13 +52,8 @@ namespace Xwt.GtkBackend
 			RegisterBackend<IListStoreBackend, ListStoreBackend> ();
 			RegisterBackend<ICanvasBackend, CanvasBackend> ();
 			RegisterBackend<ImageBackendHandler, ImageHandler> ();
-#if USE_PANGO
-			RegisterBackend<Xwt.Backends.ContextBackendHandler, ContextBackendHandlerWithPango> ();
+			RegisterBackend<Xwt.Backends.ContextBackendHandler, CairoContextBackendHandler> ();
 			RegisterBackend<TextLayoutBackendHandler, GtkTextLayoutBackendHandler> ();
-#else
-			WidgetRegistry.RegisterBackend<ContextBackendHandler, ContextBackendHandler> ();
-			WidgetRegistry.RegisterBackend<TextLayoutBackendHandler, CairoTextLayoutBackendHandler> ();
-#endif
 			RegisterBackend<DrawingPathBackendHandler, CairoContextBackendHandler> ();
 			RegisterBackend<GradientBackendHandler, CairoGradientBackendHandler> ();
 			RegisterBackend<FontBackendHandler, GtkFontBackendHandler> ();
@@ -105,6 +98,7 @@ namespace Xwt.GtkBackend
 			RegisterBackend<IEmbeddedWidgetBackend, EmbeddedWidgetBackend> ();
 			RegisterBackend<ISegmentedButtonBackend, SegmentedButtonBackend> ();
 			RegisterBackend<ISliderBackend, SliderBackend> ();
+			RegisterBackend<IRadioButtonBackend, RadioButtonBackend> ();
 		}
 
 		public override void RunApplication ()
@@ -190,6 +184,12 @@ namespace Xwt.GtkBackend
 		{
 			IGtkWidgetBackend wb = (IGtkWidgetBackend)Toolkit.GetBackend (w);
 			return wb.Widget;
+		}
+
+		public override object GetNativeImage (Xwt.Drawing.Image image)
+		{
+			var pix = (GtkImage)Toolkit.GetBackend (image);
+			return pix.ToPixbuf (ApplicationContext, image.Size.Width, image.Size.Height);
 		}
 		
 		public override IWindowFrameBackend GetBackendForWindow (object nativeWindow)

@@ -34,7 +34,7 @@ namespace Xwt.Drawing
 
 		public DrawingPath ()
 		{
-			handler = ToolkitEngine.DrawingPathBackendHandler;
+			handler = Toolkit.CurrentEngine.VectorImageRecorderContextHandler;
 			Backend = handler.CreatePath ();
 		}
 
@@ -49,7 +49,7 @@ namespace Xwt.Drawing
 		/// <returns>A new DrawingPath instance that is a copy of the current drawing path.</returns>
 		public DrawingPath CopyPath ()
 		{
-			return new DrawingPath (handler.CopyPath (Backend), ToolkitEngine, ToolkitEngine.DrawingPathBackendHandler);
+			return new DrawingPath (handler.CopyPath (Backend), ToolkitEngine, handler);
 		}
 
 		/// <summary>
@@ -287,7 +287,14 @@ namespace Xwt.Drawing
 		/// </param>
 		public void AppendPath (DrawingPath p)
 		{
-			handler.AppendPath (Backend, p.Backend);
+			if (p is Context)
+				throw new NotSupportedException ("Can't directly append a Context object to a path");
+			if (!(handler is VectorImageRecorderContextHandler) && (p.Backend is VectorBackend)) {
+				var c = (VectorBackend)p.Backend;
+				ToolkitEngine.VectorImageRecorderContextHandler.Draw (handler, Backend, c.ToVectorImageData ());
+			} else {
+				handler.AppendPath (Backend, p.Backend);
+			}
 		}
 
 		public bool IsPointInFill (Point p)

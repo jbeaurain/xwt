@@ -46,8 +46,10 @@ namespace Xwt.GtkBackend
 			Pango.Layout layout;
 			public Pango.Layout Layout {
 				get {
-					if (hasUnassignedAttributes)
+					if (hasUnassignedAttributes) {
 						attributes.AssignTo (layout);
+						hasUnassignedAttributes = false;
+					}
 					return layout;
 				}
 				set {
@@ -92,6 +94,8 @@ namespace Xwt.GtkBackend
 			{
 				if (indexToByteIndex == null)
 					SetupTables();
+				if (i >= indexToByteIndex.Length)
+					return i;
 				return indexToByteIndex[i];
 			}
 			
@@ -120,7 +124,10 @@ namespace Xwt.GtkBackend
 
 			public void Dispose ()
 			{
-				Layout.Dispose ();
+				if (layout != null) {
+					layout.Dispose ();
+					layout = null;
+				}
 				if (attributes != null) {
 					attributes.Dispose ();
 					attributes = null;
@@ -136,15 +143,7 @@ namespace Xwt.GtkBackend
 			}
 		}
 		
-		public override object Create (Context context)
-		{
-			CairoContextBackend c = (CairoContextBackend) Toolkit.GetBackend (context);
-			return new PangoBackend {
-				Layout = Pango.CairoHelper.CreateLayout (c.Context)
-			};
-		}
-		
-		public override object Create (ICanvasBackend canvas)
+		public override object Create ()
 		{
 			return new PangoBackend {
 				Layout = Pango.CairoHelper.CreateLayout (SharedContext)
