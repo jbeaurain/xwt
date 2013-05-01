@@ -90,6 +90,24 @@ namespace Xwt.Mac
 				y = v.Superview.Frame.Height - y - (float)rect.Height;
 			v.Frame = new System.Drawing.RectangleF ((float)rect.X, y, (float)rect.Width, (float)rect.Height);
 		}
+
+		public static Alignment ToAlignment (this NSTextAlignment align)
+		{
+			switch (align) {
+			case NSTextAlignment.Center: return Alignment.Center;
+			case NSTextAlignment.Right: return Alignment.End;
+			default: return Alignment.Start;
+			}
+		}
+
+		public static NSTextAlignment ToNSTextAlignment (this Alignment align)
+		{
+			switch (align) {
+			case Alignment.Center: return NSTextAlignment.Center;
+			case Alignment.End: return NSTextAlignment.Right;
+			default: return NSTextAlignment.Left;
+			}
+		}
 		
 		public static NSColor ToNSColor (this Color col)
 		{
@@ -163,6 +181,8 @@ namespace Xwt.Mac
 				return NSPasteboard.NSStringType;
 			if (dt == TransferDataType.Rtf)
 				return NSPasteboard.NSRtfType;
+			if (dt == TransferDataType.Html)
+				return NSPasteboard.NSHtmlType;
 			if (dt == TransferDataType.Image)
 				return NSPasteboard.NSTiffType;
 
@@ -235,6 +255,18 @@ namespace Xwt.Mac
 			default:
 				throw new NotSupportedException ();
 			}
+		}
+
+		public static NSImage ToNSImage (this ImageDescription idesc)
+		{
+			var img = (NSImage)idesc.Backend;
+			if (img is CustomImage)
+				img = ((CustomImage)img).Clone ();
+			else {
+				img = (NSImage)img.Copy ();
+			}
+			img.Size = new System.Drawing.SizeF ((float)idesc.Size.Width, (float)idesc.Size.Height);
+			return img;
 		}
 	}
 

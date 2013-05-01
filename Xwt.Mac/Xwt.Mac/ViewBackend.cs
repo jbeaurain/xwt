@@ -269,6 +269,7 @@ namespace Xwt.Mac
 					((NSControl)(object)Widget).Font = (NSFont) value;
 				if (Widget is NSText)
 					((NSText)(object)Widget).Font = (NSFont) value;
+				ResetFittingSize ();
 			}
 		}
 		
@@ -319,7 +320,7 @@ namespace Xwt.Mac
 			return GetPreferredWidth ();
 		}
 		
-		double minWidth = -1, minHeight = -1;
+		protected double minWidth = -1, minHeight = -1;
 		
 		public void SetMinSize (double width, double height)
 		{
@@ -335,7 +336,7 @@ namespace Xwt.Mac
 			Widget.Frame = f;
 		}
 
-		public virtual void SizeToFit ()
+		public void SizeToFit ()
 		{
 			OnSizeToFit ();
 //			if (minWidth != -1 && Widget.Frame.Width < minWidth || minHeight != -1 && Widget.Frame.Height < minHeight)
@@ -347,13 +348,13 @@ namespace Xwt.Mac
 			return Size.Zero;
 		}
 
+		static readonly Selector sizeToFitSel = new Selector ("sizeToFit");
+
 		protected virtual void OnSizeToFit ()
 		{
-			if (Widget is NSControl)
-				((NSControl)Widget).SizeToFit ();
-			else if (Widget is NSBox)
-				((NSBox)Widget).SizeToFit ();
-			else {
+			if (Widget.RespondsToSelector (sizeToFitSel)) {
+				Messaging.void_objc_msgSend (Widget.Handle, sizeToFitSel.Handle);
+			} else {
 				var s = CalcFittingSize ();
 				if (!s.IsZero)
 					Widget.SetFrameSize (new SizeF ((float)s.Width, (float)s.Height));
@@ -644,6 +645,7 @@ namespace Xwt.Mac
 			if (type == TransferDataType.Uri) return NSPasteboard.NSFilenamesType;
 			if (type == TransferDataType.Image) return NSPasteboard.NSPictType;
 			if (type == TransferDataType.Rtf) return NSPasteboard.NSRtfType;
+			if (type == TransferDataType.Html) return NSPasteboard.NSHtmlType;
 			return type.Id;
 		}
 		
@@ -657,6 +659,8 @@ namespace Xwt.Mac
 				return TransferDataType.Image;
 			if (type == NSPasteboard.NSRtfType)
 				return TransferDataType.Rtf;
+			if (type == NSPasteboard.NSHtmlType)
+				return TransferDataType.Html;
 			return TransferDataType.FromId (type);
 		}
 

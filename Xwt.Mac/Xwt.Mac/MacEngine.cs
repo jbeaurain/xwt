@@ -81,6 +81,7 @@ namespace Xwt.Mac
 			RegisterBackend <Xwt.Backends.IMenuItemBackend, MenuItemBackend> ();
 			RegisterBackend <Xwt.Backends.ICheckBoxMenuItemBackend, CheckBoxMenuItemBackend> ();
 			RegisterBackend <Xwt.Backends.IRadioButtonMenuItemBackend, RadioButtonMenuItemBackend> ();
+			RegisterBackend <Xwt.Backends.IRadioButtonBackend, RadioButtonBackend> ();
 			RegisterBackend <Xwt.Backends.ISeparatorMenuItemBackend, SeparatorMenuItemBackend> ();
 			RegisterBackend <Xwt.Backends.IComboBoxBackend, ComboBoxBackend> ();
 			RegisterBackend <Xwt.Backends.IComboBoxEntryBackend, ComboBoxEntryBackend> ();
@@ -108,6 +109,7 @@ namespace Xwt.Mac
 			RegisterBackend <Xwt.Backends.IMenuButtonBackend, MenuButtonBackend> ();
 			RegisterBackend <Xwt.Backends.IListBoxBackend, ListBoxBackend> ();
 			RegisterBackend <Xwt.Backends.IDialogBackend, DialogBackend> ();
+			RegisterBackend <Xwt.Backends.IRichTextViewBackend, RichTextViewBackend> ();
 		}
 
 		public override void RunApplication ()
@@ -146,7 +148,7 @@ namespace Xwt.Mac
 			if (action == null)
 				throw new ArgumentNullException ("action");
 
-			NSApplication.SharedApplication.BeginInvokeOnMainThread (delegate {
+			NSRunLoop.Main.BeginInvokeOnMainThread (delegate {
 				action ();
 			});
 		}

@@ -28,16 +28,19 @@ using Xwt.Backends;
 using Xwt.Drawing;
 using System.Reflection;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Xwt
 {
 	public class Toolkit: IFrontend
 	{
 		static Toolkit currentEngine;
+		static Dictionary<Type, Toolkit> toolkits = new Dictionary<Type, Toolkit> ();
 
 		ToolkitEngineBackend backend;
 		ApplicationContext context;
 		XwtTaskScheduler scheduler;
+		ToolkitType toolkitType;
 
 		int inUserCode;
 		Queue<Action> exitActions = new Queue<Action> ();
@@ -47,6 +50,10 @@ namespace Xwt
 
 		public static Toolkit CurrentEngine {
 			get { return currentEngine; }
+		}
+
+		public static IEnumerable<Toolkit> LoadedToolkits {
+			get { return toolkits.Values; }
 		}
 
 		internal ApplicationContext Context {
@@ -72,6 +79,10 @@ namespace Xwt
 		{
 			context = new ApplicationContext (this);
 			scheduler = new XwtTaskScheduler (this);
+		}
+
+		public ToolkitType Type {
+			get { return toolkitType; }
 		}
 
 		public static Toolkit Load (string fullTypeName)
@@ -101,9 +112,38 @@ namespace Xwt
 
 		public static Toolkit Load (ToolkitType type)
 		{
+			var et = toolkits.Values.FirstOrDefault (tk => tk.toolkitType == type);
+			if (et != null)
+				return et;
+
 			Toolkit t = new Toolkit ();
+			t.toolkitType = type;
 			t.LoadBackend (GetBackendType (type), true, true);
 			return t;
+		}
+
+		/// <summary>
+		/// Tries to load a toolkit
+		/// </summary>
+		/// <returns><c>true</c>, the toolkit could be loaded, <c>false</c> otherwise.</returns>
+		/// <param name="type">Toolkit type</param>
+		/// <param name="toolkit">The loaded toolkit</param>
+		public static bool TryLoad (ToolkitType type, out Toolkit toolkit)
+		{
+			var et = toolkits.Values.FirstOrDefault (tk => tk.toolkitType == type);
+			if (et != null) {
+				toolkit = et;
+				return true;
+			}
+
+			Toolkit t = new Toolkit ();
+			t.toolkitType = type;
+			if (t.LoadBackend (GetBackendType (type), true, false)) {
+				toolkit = t;
+				return true;
+			}
+			toolkit = null;
+			return false;
 		}
 
 		internal static string GetBackendType (ToolkitType type)
@@ -145,11 +185,14 @@ namespace Xwt
 					throw new Exception ("Toolkit could not be loaded", ex);
 				Application.NotifyException (ex);
 			}
+			if (throwIfFails)
+				throw new Exception ("Toolkit could not be loaded");
 			return false;
 		}
 
 		void Initialize (bool isGuest)
 		{
+			toolkits[Backend.GetType ()] = this;
 			backend.Initialize (this, isGuest);
 			ContextBackendHandler = Backend.CreateBackend<ContextBackendHandler> ();
 			GradientBackendHandler = Backend.CreateBackend<GradientBackendHandler> ();
@@ -161,6 +204,16 @@ namespace Xwt
 			ImageBackendHandler = Backend.CreateBackend<ImageBackendHandler> ();
 			DrawingPathBackendHandler = Backend.CreateBackend<DrawingPathBackendHandler> ();
 			DesktopBackend = Backend.CreateBackend<DesktopBackend> ();
+			VectorImageRecorderContextHandler = new VectorImageRecorderContextHandler (this);
+		}
+
+		internal static ToolkitEngineBackend GetToolkitBackend (Type type)
+		{
+			Toolkit t;
+			if (toolkits.TryGetValue (type, out t))
+				return t.backend;
+			else
+				return null;
 		}
 
 		internal void SetActive ()
@@ -171,6 +224,7 @@ namespace Xwt
 		public object GetNativeWidget (Widget w)
 		{
 			ValidateObject (w);
+			w.SetExtractedAsNative ();
 			return backend.GetNativeWidget (w);
 		}
 
@@ -348,6 +402,7 @@ namespace Xwt
 		internal ImageBackendHandler ImageBackendHandler;
 		internal DrawingPathBackendHandler DrawingPathBackendHandler;
 		internal DesktopBackend DesktopBackend;
+		internal VectorImageRecorderContextHandler VectorImageRecorderContextHandler;
 	}
 
 	class NativeWindowFrame: WindowFrame

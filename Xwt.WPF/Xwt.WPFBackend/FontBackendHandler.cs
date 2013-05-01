@@ -26,6 +26,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
+using System.Linq;
 using SW = System.Windows;
 
 using Xwt.Backends;
@@ -37,9 +38,29 @@ namespace Xwt.WPFBackend
 {
 	public class WpfFontBackendHandler : FontBackendHandler
 	{
-		public override object Create (string fontName, double size, FontSizeUnit sizeUnit, FontStyle style, FontWeight weight, FontStretch stretch)
+		public override object GetSystemDefaultFont ()
 		{
-			return new FontData (new FontFamily (fontName), size, sizeUnit);
+			double size = GetPointsFromDeviceUnits (SW.SystemFonts.MessageFontSize);
+
+			return new FontData (SW.SystemFonts.MessageFontFamily, size) {
+				Style = SW.SystemFonts.MessageFontStyle,
+				Weight = SW.SystemFonts.MessageFontWeight
+			};
+		}
+
+		public override System.Collections.Generic.IEnumerable<string> GetInstalledFonts ()
+		{
+			return System.Windows.Media.Fonts.SystemFontFamilies.Select (f => f.Source);
+		}
+
+		public override object Create (string fontName, double size, FontStyle style, FontWeight weight, FontStretch stretch)
+		{
+			size = GetPointsFromDeviceUnits (size);
+			return new FontData (new FontFamily (fontName), size) {
+				Style = style.ToWpfFontStyle (),
+				Weight = weight.ToWpfFontWeight (),
+				Stretch = stretch.ToWpfFontStretch ()
+			};
 		}
 
 		public override object Copy (object handle)
@@ -48,11 +69,11 @@ namespace Xwt.WPFBackend
 			return font.Clone ();
 		}
 
-		public override object SetSize (object handle, double size, FontSizeUnit sizeUnit)
+		public override object SetSize (object handle, double size)
 		{
 			var font = (FontData)handle;
 			font = font.Clone ();
-			font.Size = size;
+			font.Size = GetPointsFromDeviceUnits (size);
 			return font;
 		}
 
@@ -91,7 +112,7 @@ namespace Xwt.WPFBackend
 		public override double GetSize (object handle)
 		{
 			var font = (FontData)handle;
-			return font.Size;
+			return GetDeviceUnitsFromPoints (font.Size);
 		}
 
 		public override string GetFamily (object handle)
@@ -131,15 +152,14 @@ namespace Xwt.WPFBackend
 
 	internal class FontData
 	{
-		public FontData (FontFamily family, double size, FontSizeUnit unit)
+		public FontData (FontFamily family, double size)
 		{
-			Unit = unit;
 			Family = family;
 			Size = size;
 		}
 
-		public FontData (string family, double size, FontSizeUnit unit) :
-			this (new FontFamily (family), size, unit)
+		public FontData (string family, double size) :
+			this (new FontFamily (family), size)
 		{
 		}
 
@@ -148,33 +168,22 @@ namespace Xwt.WPFBackend
 		public SW.FontWeight Weight { get; set; }
 		public SW.FontStyle Style { get; set; }
 		public SW.FontStretch Stretch { get; set; }
-		public FontSizeUnit Unit { get; set; }
 
 		public double GetDeviceIndependentPixelSize (SW.Controls.Control control)
 		{
-			if (Unit == FontSizeUnit.Points)
-				return WpfFontBackendHandler.GetDeviceUnitsFromPoints (Size);
-			else {
-				Size pixelRatios = control.GetPixelRatios ();
-				return Size / pixelRatios.Width;
-			}
+			return WpfFontBackendHandler.GetDeviceUnitsFromPoints (Size);
 		}
 
 		public double GetDeviceIndependentPixelSize ()
 		{
-			if (Unit == FontSizeUnit.Points)
-				return WpfFontBackendHandler.GetDeviceUnitsFromPoints (Size);
-			else {
-				return Size;
-			}
+			return WpfFontBackendHandler.GetDeviceUnitsFromPoints (Size);
 		}
 
 		public static FontData FromControl (SW.Controls.Control control)
 		{
-			Size pixelRatios = control.GetPixelRatios ();
-			var pixelSize = control.FontSize * pixelRatios.Width;
+			double size = WpfFontBackendHandler.GetPointsFromDeviceUnits (control.FontSize);
 
-			return new FontData (control.FontFamily, pixelSize, FontSizeUnit.Pixels) {
+			return new FontData (control.FontFamily, size) {
 				Style = control.FontStyle,				
 				Stretch = control.FontStretch,
 				Weight = control.FontWeight
@@ -184,7 +193,7 @@ namespace Xwt.WPFBackend
 		// Didn't implement IClone on purpose (recommended by the Framework Design guidelines)
 		public FontData Clone ()
 		{
-			return new FontData (Family, Size, Unit) {
+			return new FontData (Family, Size) {
 				Style = Style,
 				Stretch = Stretch,
 				Weight = Weight
